@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Pistieju/snippetbox/internal/models"
-	"html/template"
 	"net/http"
 	"strconv"
 )
@@ -21,24 +20,9 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files := []string{
-		"./ui/html/base.tmpl.html",
-		"./ui/html/partials/nav.tmpl.html",
-		"./ui/html/pages/home.tmpl.html",
-	}
-
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	templateData := &templateData{Snippets: snippets}
-
-	err = ts.ExecuteTemplate(w, "base", templateData)
-	if err != nil {
-		app.serverError(w, err)
-	}
+	templateData := app.newTemplateData(r)
+	templateData.Snippets = snippets
+	app.render(w, http.StatusOK, "home.tmpl.html", templateData)
 }
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
@@ -58,23 +42,9 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files := []string{
-		"./ui/html/base.tmpl.html",
-		"./ui/html/partials/nav.tmpl.html",
-		"./ui/html/pages/view.tmpl.html",
-	}
-
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	data := &templateData{Snippet: snippet}
-	err = ts.ExecuteTemplate(w, "base", data)
-	if err != nil {
-		app.serverError(w, err)
-	}
+	templateData := app.newTemplateData(r)
+	templateData.Snippet = snippet
+	app.render(w, http.StatusOK, "view.tmpl.html", templateData)
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
