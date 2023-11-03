@@ -4,10 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Pistieju/snippetbox/internal/models"
+	"github.com/Pistieju/snippetbox/internal/validator"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
 )
+
+type snippetCreateForm struct {
+	Title     string              `form:"title"`
+	Content   string              `form:"content"`
+	Expires   int                 `form:"expires"`
+	Validator validator.Validator `form:"-"`
+}
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	snippets, err := app.snippets.Latest()
@@ -46,15 +54,33 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Display the form for creating a new snippet..."))
+	templateData := app.newTemplateData(r)
+	templateData.Form = snippetCreateForm{Expires: 365}
+	app.render(w, http.StatusOK, "create.tmpl.html", templateData)
 }
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	title := "0 snail"
-	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
-	expires := 7
+	var form snippetCreateForm
 
-	id, err := app.snippets.Insert(title, content, expires)
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	form.Validator.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
+	form.Validator.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters")
+	form.Validator.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
+	form.Validator.CheckField(validator.PermittedInt(form.Expires), "expires", "This field must equal 1, 7 or 365")
+
+	if !form.Validator.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "create.tmpl.html", data)
+		return
+	}
+
+	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
 	if err != nil {
 		app.serverError(w, err)
 		return
