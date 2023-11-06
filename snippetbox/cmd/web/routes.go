@@ -15,6 +15,8 @@ func (app *application) routes() http.Handler {
 	})
 
 	fileServer := http.FileServer(http.FS(ui.Files))
+
+	router.Handler(http.MethodGet, "/ping", http.HandlerFunc(ping))
 	router.Handler(http.MethodGet, "/static/*filepath", fileServer)
 
 	// Unprotected application routes using the dynamic middleware chain.
